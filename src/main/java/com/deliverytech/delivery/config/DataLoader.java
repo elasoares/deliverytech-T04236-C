@@ -51,6 +51,7 @@ public class DataLoader {
             System.out.println(r1.getProdutos());
             System.out.println(r1.getTelefone());
 
+
             System.out.println("Produto criado: ");
 
             Produto p1 = new Produto();
