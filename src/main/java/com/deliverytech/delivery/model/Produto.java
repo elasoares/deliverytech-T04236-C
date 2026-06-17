@@ -1,14 +1,14 @@
 package com.deliverytech.delivery.model;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 
-import jakarta.persistence.*;
-import lombok.*;
-
-@Entity
 @Getter
 @Setter
-@Table(name = "produtos")
+@Entity
 public class Produto {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,7 +18,7 @@ public class Produto {
     private String categoria;
     private BigDecimal preco;
     private boolean disponivel;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurante_id")
     private Restaurante restaurante;

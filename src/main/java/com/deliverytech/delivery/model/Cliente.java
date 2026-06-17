@@ -1,15 +1,16 @@
 package com.deliverytech.delivery.model;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
-@Table(name = "clientes")
+@Entity
 public class Cliente {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,11 +19,11 @@ public class Cliente {
     private String email;
     private String telefone;
     private String endereco;
-
-    @Column(name = "data_cadastro")
     private LocalDateTime dataCadastro;
-
     private boolean ativo;
+
+    @OneToMany(mappedBy = "cliente", fetch = FetchType.LAZY)
+    private List<Pedido> pedidos = new ArrayList<>();
 
     @PrePersist
     public void prePersist(){
