@@ -1,4 +1,4 @@
-package com.deliverytech.delivery.dto.request.response;
+package com.deliverytech.delivery.dto.response;
 
 import org.springframework.data.domain.Page;
 

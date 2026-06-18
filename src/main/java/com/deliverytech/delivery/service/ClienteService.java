@@ -1,18 +1,18 @@
 package com.deliverytech.delivery.service;
 
-import com.deliverytech.delivery.dto.request.response.ClienteDTORequest;
-import com.deliverytech.delivery.dto.request.response.ClienteDTOResponse;
+import com.deliverytech.delivery.dto.request.ClienteDTO;
+import com.deliverytech.delivery.dto.response.ClienteDTOResponse;
 import com.deliverytech.delivery.exception.BusinessException;
 import com.deliverytech.delivery.exception.EntityNotFoundException;
 import com.deliverytech.delivery.model.Cliente;
 import com.deliverytech.delivery.repository.ClienteRepository;
+import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class ClienteService {
@@ -25,8 +25,8 @@ public class ClienteService {
         this.mapper = mapper;
     }
 
-
-    public ClienteDTOResponse cadastrarCliente(ClienteDTORequest dto){
+    @Transactional
+    public ClienteDTOResponse cadastrarCliente(ClienteDTO dto){
         if( repository.existsByEmail(dto.getEmail()) ){
             throw new BusinessException("Email já cadastrado.");
         }
@@ -57,7 +57,8 @@ public class ClienteService {
 
     }
 
-    public ClienteDTOResponse atualizarCliente(Long id, ClienteDTORequest dto){
+    @Transactional
+    public ClienteDTOResponse atualizarCliente(Long id, ClienteDTO dto){
         Cliente cliente = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
 
@@ -71,6 +72,7 @@ public class ClienteService {
 
     }
 
+    @Transactional
     public ClienteDTOResponse toggle(Long id){
         Cliente cliente = repository.findById(id)
                 .orElseThrow(()-> new EntityNotFoundException("Cliente não encontrado."));
