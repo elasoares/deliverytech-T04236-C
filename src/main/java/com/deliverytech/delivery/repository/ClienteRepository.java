@@ -14,6 +14,7 @@ import java.util.Optional;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByEmail(String email);
     Page<Cliente> findByAtivoTrue(Pageable pageable);
-    List<Cliente> findByNomeContainingIgnoreCase(String nome);
+    /*List<Cliente> findByNomeContainingIgnoreCase(String nome);*/
     boolean existsByEmail(String email);
+    boolean existsByUsuario_Id(Long id);
 }

@@ -18,9 +18,9 @@ import lombok.Setter;
 @Schema(description = "Dados para cadastro/atualização de restaurante.")
 public class RestauranteDTO {
 
-    @Schema(description = "Nome do restaurante.", example = "Pizzaria Bella Itália")
+   /* @Schema(description = "Nome do restaurante.", example = "Pizzaria Bella Itália")
     @NotBlank(message = "Nome do restaurante é obrigatório")
-    private String nome;
+    private String nome;*/
 
     @Schema(description = "Categoria do restaurante.", example = "Italiana")
     @CategoriaValida

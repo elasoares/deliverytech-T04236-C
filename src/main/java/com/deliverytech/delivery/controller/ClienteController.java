@@ -1,8 +1,10 @@
 package com.deliverytech.delivery.controller;
 
 import com.deliverytech.delivery.dto.request.ClienteDTO;
+import com.deliverytech.delivery.dto.request.ClienteDTOAtualizar;
 import com.deliverytech.delivery.dto.response.ClienteDTOResponse;
 import com.deliverytech.delivery.dto.response.PagedResponse;
+import com.deliverytech.delivery.model.Usuario;
 import com.deliverytech.delivery.service.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.TimeUnit;
@@ -39,10 +43,11 @@ public class ClienteController {
             @ApiResponse(responseCode = "409", description = "Cliente já cadastrado com esse e-mail.")
     })
     @PostMapping("/cadastrar")
-    public ResponseEntity<ClienteDTOResponse> cadastrarCliente(@Valid @RequestBody ClienteDTO dto) {
+    public ResponseEntity<ClienteDTOResponse> cadastrarCliente(
+            @Valid @RequestBody ClienteDTO dto, @AuthenticationPrincipal Usuario logado) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(service.cadastrarCliente(dto));
+                .body(service.cadastrarCliente(dto, logado));
     }
 
     @Operation(summary = "Buscar cliente por Id.")
@@ -80,8 +85,9 @@ public class ClienteController {
             @ApiResponse(responseCode = "400", description = "Erro de validação nos campos informados."),
             @ApiResponse(responseCode = "404", description = "Cliente não encontrado pelo Id mencionado.")
     })
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CLIENTE'))")
     @PutMapping("/{id}")
-    public ResponseEntity<ClienteDTOResponse> atualizarCliente(@PathVariable Long id, @Valid @RequestBody ClienteDTO dto) {
+    public ResponseEntity<ClienteDTOResponse> atualizarCliente(@PathVariable Long id, @Valid @RequestBody ClienteDTOAtualizar dto) {
         return ResponseEntity.ok(service.atualizarCliente(id, dto));
     }
 
@@ -90,6 +96,7 @@ public class ClienteController {
             @ApiResponse(responseCode = "200", description = "Status do cliente alterado com sucesso."),
             @ApiResponse(responseCode = "404", description = "Cliente não encontrado pelo Id mencionado.")
     })
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CLIENTE'))")
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<ClienteDTOResponse> toggle(@PathVariable Long id) {
         return ResponseEntity.ok(service.toggle(id));
