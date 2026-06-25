@@ -56,14 +56,17 @@ public class RestauranteService {
                 .map(r -> mapper.map(r, RestauranteDTOResponse.class));
     }
 
-   /* public boolean isOwner(String categoria, Usuario usuarioLogado ){
-
-    }
-
     public Page<RestauranteDTOResponse> buscarPorCategoria(String categoria, Pageable pageable) {
-        return repository.findByCategoriaAndAtivoTrue(categoria, pageable)
+        CategoriaRestaurante categoriaEnum;
+        try{
+            categoriaEnum = CategoriaRestaurante.valueOf(categoria.toUpperCase());
+        }catch (IllegalArgumentException e){
+            throw new BusinessException("Categoria inválida.");
+        }
+
+        return repository.findByCategoriaAndAtivoTrue(categoriaEnum, pageable)
                 .map(r -> mapper.map(r, RestauranteDTOResponse.class));
-    }*/
+    }
 
     public RestauranteDTOResponse buscarPorId(Long id) {
         Restaurante r = repository.findById(id)

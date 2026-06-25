@@ -101,11 +101,11 @@ public class RestauranteController {
                 .body(new com.deliverytech.delivery.dto.response.ApiResponse<>(service.buscarPorId(id)));
     }
 
-    /*@Operation(summary = "Buscar restaurantes por categoria (paginado).")
+    @Operation(summary = "Buscar restaurantes por categoria (paginado).")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Busca realizada com sucesso.")
     })
-    @PreAuthorize("hasRole('ADMIN') or (hasRole('CLIENTE') and @restauranteService.isOwner(#categoria, authentication.principal))")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('CLIENTE'))")
     @GetMapping("/categoria")
     public ResponseEntity<PagedResponse<RestauranteDTOResponse>> buscarPorCategoria(
             @RequestParam String categoria,
@@ -119,7 +119,7 @@ public class RestauranteController {
         return ResponseEntity.ok()
                 .header("Content-Type", "application/json")
                 .body(response);
-    }*/
+    }
 
     @Operation(summary = "Ativar ou desativar restaurante.")
     @ApiResponses(value = {

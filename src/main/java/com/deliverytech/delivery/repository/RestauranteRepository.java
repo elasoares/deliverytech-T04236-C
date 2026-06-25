@@ -1,5 +1,6 @@
 package com.deliverytech.delivery.repository;
 
+import com.deliverytech.delivery.enums.CategoriaRestaurante;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,6 @@ public interface RestauranteRepository extends JpaRepository<Restaurante, Long>{
     /*List<Restaurante> findByCategoria(String categoria);*/
     Page<Restaurante> findByAtivoTrue(Pageable pageable);
     /*boolean existsByNome(String nome);*/
-    Page<Restaurante> findByCategoriaAndAtivoTrue(String categoria, Pageable pageable);
+    Page<Restaurante> findByCategoriaAndAtivoTrue(CategoriaRestaurante categoria, Pageable pageable);
     boolean existsByUsuario_Id(Long id);
 }

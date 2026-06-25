@@ -75,8 +75,8 @@ public class ClienteService {
         Cliente cliente = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
 
-        cliente.setNome(dto.getNome());
-        cliente.setEmail(dto.getEmail());
+        /*cliente.setNome(dto.getNome());*/
+        /*cliente.setEmail(dto.getEmail());*/
         cliente.setTelefone(dto.getTelefone());
         cliente.setEndereco(dto.getEndereco());
         Cliente salvo = repository.save(cliente);
