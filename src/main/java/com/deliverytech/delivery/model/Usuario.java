@@ -23,11 +23,9 @@ public class Usuario implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String email;
     private String senha;
     private String nome;
-    private boolean ativo;
     private LocalDateTime dataCadastro;
 
     @Enumerated(EnumType.STRING)
@@ -64,7 +62,5 @@ public class Usuario implements UserDetails {
     @Override
     public boolean isCredentialsNonExpired(){return true;}
 
-    @Override
-    public boolean isEnabled(){return ativo;}
 
 }

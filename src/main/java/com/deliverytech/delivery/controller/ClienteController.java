@@ -69,7 +69,7 @@ public class ClienteController {
         return ResponseEntity.ok(new com.deliverytech.delivery.dto.response.ApiResponse<>(service.buscarPorId(id)));
     }
 
-    @Operation(summary = "Buscar cliente por e-mail.")
+/*    @Operation(summary = "Buscar cliente por e-mail.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Cliente encontrado com sucesso."),
             @ApiResponse(responseCode = "404", description = "Cliente não encontrado pelo e-mail mencionado.")
@@ -77,7 +77,7 @@ public class ClienteController {
     @GetMapping("/email/{email}")
     public ResponseEntity<ClienteDTOResponse> buscarPorEmail(@PathVariable String email) {
         return ResponseEntity.ok(service.buscarPorEmail(email));
-    }
+    }*/
 
     @Operation(summary = "Atualizar dados do cliente.")
     @ApiResponses(value = {
@@ -86,9 +86,9 @@ public class ClienteController {
             @ApiResponse(responseCode = "404", description = "Cliente não encontrado pelo Id mencionado.")
     })
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CLIENTE'))")
-    @PutMapping("/{id}")
-    public ResponseEntity<ClienteDTOResponse> atualizarCliente(@PathVariable Long id, @Valid @RequestBody ClienteDTOAtualizar dto) {
-        return ResponseEntity.ok(service.atualizarCliente(id, dto));
+    @PutMapping("/atualizar")
+    public ResponseEntity<ClienteDTOResponse> atualizarCliente(@AuthenticationPrincipal Usuario usuarioLogado, @Valid @RequestBody ClienteDTOAtualizar dto) {
+        return ResponseEntity.ok(service.atualizarCliente(usuarioLogado, dto));
     }
 
     @Operation(summary = "Ativar ou desativar cliente.")

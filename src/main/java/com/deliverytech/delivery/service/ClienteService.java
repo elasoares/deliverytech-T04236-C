@@ -44,8 +44,6 @@ public class ClienteService {
 
         Cliente novoCliente = mapper.map(dto, Cliente.class);
         novoCliente.setUsuario(usuarioLogado);
-        novoCliente.setNome(usuarioLogado.getNome());
-        novoCliente.setEmail(usuarioLogado.getEmail());
         novoCliente.setAtivo(true);
 
         Cliente salvo = repository.save(novoCliente);
@@ -61,34 +59,29 @@ public class ClienteService {
         return mapper.map(cliente, ClienteDTOResponse.class);
     }
 
-    public ClienteDTOResponse buscarPorEmail(String email){
-        Cliente emailCliente = repository.findByEmail(email)
-                .orElseThrow(()->
-                new EntityNotFoundException("E-mail do cliente não localizado.")
-                );
-        return mapper.map(emailCliente, ClienteDTOResponse.class);
-
-    }
 
     @Transactional
-    public ClienteDTOResponse atualizarCliente(Long id, ClienteDTOAtualizar dto){
-        Cliente cliente = repository.findById(id)
+    public ClienteDTOResponse atualizarCliente(Usuario usuarioLogado, ClienteDTOAtualizar dto){
+        Cliente cliente = repository.findByUsuario_Id(usuarioLogado.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
 
-        /*cliente.setNome(dto.getNome());*/
-        /*cliente.setEmail(dto.getEmail());*/
+        Usuario usuario = cliente.getUsuario();
+        usuario.setNome(dto.getNome());
+        usuario.setEmail(dto.getEmail());
+
         cliente.setTelefone(dto.getTelefone());
         cliente.setEndereco(dto.getEndereco());
+
         Cliente salvo = repository.save(cliente);
 
         return mapper.map(salvo, ClienteDTOResponse.class);
-
     }
 
     @Transactional
     public ClienteDTOResponse toggle(Long id){
         Cliente cliente = repository.findById(id)
                 .orElseThrow(()-> new EntityNotFoundException("Cliente não encontrado."));
+
         cliente.setAtivo(!cliente.isAtivo());
 
         Cliente salvo = repository.save(cliente);

@@ -31,6 +31,7 @@ public class ClienteDTOAtualizar {
         @Size(min = 5, message = "Endereço deve ter no mínimo 5 caracteres.")
         @NotBlank(message = "Endereço é obrigatório")
         private String endereco;
+
 }
 
 

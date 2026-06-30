@@ -12,9 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
-    Optional<Cliente> findByEmail(String email);
     Page<Cliente> findByAtivoTrue(Pageable pageable);
-    /*List<Cliente> findByNomeContainingIgnoreCase(String nome);*/
-    boolean existsByEmail(String email);
     boolean existsByUsuario_Id(Long id);
+    Optional<Cliente> findByUsuario_Id(Long id);
 }
