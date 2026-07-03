@@ -19,7 +19,7 @@ public class PedidoDTOResponse {
     private BigDecimal valorTotal;
     private StatusPedido status;
     private String enderecoEntrega;
-    private List<ItemPedido> itens;
+    private List<ItemPedidoResponseDTO> itens;
 
     private String nomeCliente;
     private String nomeRestaurante;

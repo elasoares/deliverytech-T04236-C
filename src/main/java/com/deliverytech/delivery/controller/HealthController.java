@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
 
-    @GetMapping("/health")
+    @GetMapping("/custom-health")
     public Map<String, String> health(){
         return Map.of(
             "status", "UP",
@@ -22,7 +22,7 @@ public class HealthController {
         );
     }
 
-    @GetMapping("/info")
+    @GetMapping("/custom-info")
     public AppInfo info(){
         return new AppInfo("Delivery Tech API", "1.0,","Elaine", "Spring boot");
     }

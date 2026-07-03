@@ -2,6 +2,8 @@ package com.deliverytech.delivery.service;
 
 import java.math.BigDecimal;
 
+import com.deliverytech.delivery.metrics.DeliveryMetrics;
+import io.micrometer.core.instrument.Timer;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -34,19 +36,21 @@ public class PedidoService {
     private final RestauranteRepository restauranteRepository;
     private final ProdutoRepository produtoRepository;
     private final ModelMapper mapper;
+    private final DeliveryMetrics metrics;
 
     public PedidoService(
             PedidoRepository pedidoRepository,
             ClienteRepository clienteRepository,
             RestauranteRepository restauranteRepository,
             ProdutoRepository produtoRepository,
-            ModelMapper mapper) {
+            ModelMapper mapper, DeliveryMetrics metrics) {
 
         this.pedidoRepository = pedidoRepository;
         this.clienteRepository = clienteRepository;
         this.restauranteRepository = restauranteRepository;
         this.produtoRepository = produtoRepository;
         this.mapper = mapper;
+        this.metrics = metrics;
     }
 
     private PedidoDTOResponse toDTO(Pedido pedido) {
@@ -56,55 +60,68 @@ public class PedidoService {
 
     @Transactional
     public PedidoDTOResponse criarPedido(PedidoDTO dto, Usuario usuarioLogado) {
+        Timer.Sample timer = metrics.iniciarTimer();
 
-        if (usuarioLogado == null) {
-            throw new BusinessException("Usuário não autenticado.");
-        }
-        Cliente cliente = clienteRepository.findByUsuario_Id(usuarioLogado.getId())
-                .orElseThrow(() -> new BusinessException("Cliente não encontrado para este usuário."));
+        try{
+            if (usuarioLogado == null) {
+                throw new BusinessException("Usuário não autenticado.");
+            }
+            Cliente cliente = clienteRepository.findByUsuario_Id(usuarioLogado.getId())
+                    .orElseThrow(() -> new BusinessException("Cliente não encontrado para este usuário."));
 
-        if (!cliente.isAtivo()) {
-            throw new BusinessException("Cliente inativo.");
-        }
-
-        Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
-                .orElseThrow(() -> new EntityNotFoundException("Restaurante não encontrado."));
-
-        Pedido pedido = new Pedido();
-        pedido.setCliente(cliente);
-        pedido.setRestaurante(restaurante);
-        pedido.setStatus(StatusPedido.PENDENTE);
-        pedido.setEnderecoEntrega(dto.getEnderecoEntrega());
-
-        BigDecimal total = BigDecimal.ZERO;
-
-        for (ItemPedidoDTO itemDTO : dto.getItens()) {
-
-            Produto produto = produtoRepository.findById(itemDTO.getProdutoId())
-                    .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado."));
-
-            if (!produto.isDisponivel()) {
-                throw new BusinessException("Produto indisponível: " + produto.getNome());
+            if (!cliente.isAtivo()) {
+                throw new BusinessException("Cliente inativo.");
             }
 
-            ItemPedido item = new ItemPedido();
-            item.setPedido(pedido);
-            item.setProduto(produto);
-            item.setQuantidade(itemDTO.getQuantidade());
-            item.setPrecoUnitario(produto.getPreco());
+            Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
+                    .orElseThrow(() -> new EntityNotFoundException("Restaurante não encontrado."));
 
-            BigDecimal subtotal = produto.getPreco()
-                    .multiply(BigDecimal.valueOf(itemDTO.getQuantidade()));
+            Pedido pedido = new Pedido();
+            pedido.setCliente(cliente);
+            pedido.setRestaurante(restaurante);
+            pedido.setStatus(StatusPedido.PENDENTE);
+            pedido.setEnderecoEntrega(dto.getEnderecoEntrega());
 
-            item.setSubtotal(subtotal);
+            BigDecimal total = BigDecimal.ZERO;
 
-            pedido.getItens().add(item);
-            total = total.add(subtotal);
+            for (ItemPedidoDTO itemDTO : dto.getItens()) {
+
+                Produto produto = produtoRepository.findById(itemDTO.getProdutoId())
+                        .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado."));
+
+                if (!produto.isDisponivel()) {
+                    throw new BusinessException("Produto indisponível: " + produto.getNome());
+                }
+
+                ItemPedido item = new ItemPedido();
+                item.setPedido(pedido);
+                item.setProduto(produto);
+                item.setQuantidade(itemDTO.getQuantidade());
+                item.setPrecoUnitario(produto.getPreco());
+
+                BigDecimal subtotal = produto.getPreco()
+                        .multiply(BigDecimal.valueOf(itemDTO.getQuantidade()));
+
+                item.setSubtotal(subtotal);
+
+                pedido.getItens().add(item);
+                total = total.add(subtotal);
+
+                metrics.incrementarProdutosVendidos(itemDTO.getQuantidade());
+            }
+
+            pedido.setValorTotal(total);
+
+            PedidoDTOResponse response =  toDTO(pedidoRepository.save(pedido));
+
+            metrics.incrementarPedidosPendentes();
+            metrics.adicionarReceita(total.doubleValue());
+            metrics.finalizarTimer(timer, "criar_pedido", "sucesso");
+            return response;
+        }catch (Exception e){
+            metrics.finalizarTimer(timer, "criar_pedido", "erro");
+            throw  e;
         }
-
-        pedido.setValorTotal(total);
-
-        return toDTO(pedidoRepository.save(pedido));
     }
 
     private void validarDonoPedido(Pedido pedido, Usuario usuarioLogado) {
@@ -116,19 +133,27 @@ public class PedidoService {
 
     @Transactional
     public PedidoDTOResponse cancelarPedido(Long pedidoId, Usuario usuarioLogado) {
+        Timer.Sample timer = metrics.iniciarTimer();
+        try{
+            Pedido pedido = pedidoRepository.findById(pedidoId)
+                    .orElseThrow(() -> new EntityNotFoundException("Pedido não encontrado."));
 
-        Pedido pedido = pedidoRepository.findById(pedidoId)
-                .orElseThrow(() -> new EntityNotFoundException("Pedido não encontrado."));
+            validarDonoPedido(pedido, usuarioLogado);
 
-        validarDonoPedido(pedido, usuarioLogado);
+            if (pedido.getStatus() == StatusPedido.ENTREGUE) {
+                throw new BusinessException("Pedido entregue não pode ser cancelado.");
+            }
 
-        if (pedido.getStatus() == StatusPedido.ENTREGUE) {
-            throw new BusinessException("Pedido entregue não pode ser cancelado.");
+            pedido.setStatus(StatusPedido.CANCELADO);
+
+            PedidoDTOResponse response =  toDTO(pedidoRepository.save(pedido));
+            metrics.incrementarPedidosCancelados();
+            metrics.finalizarTimer(timer, "cancelar_pedido", "sucesso");
+            return response;
+        }catch (Exception e){
+            metrics.finalizarTimer(timer, "cancelar_pedido", "erro");
+            throw  e;
         }
-
-        pedido.setStatus(StatusPedido.CANCELADO);
-
-        return toDTO(pedidoRepository.save(pedido));
     }
 
     public Page<PedidoDTOResponse> meusPedidos(Usuario usuarioLogado, Pageable pageable) {

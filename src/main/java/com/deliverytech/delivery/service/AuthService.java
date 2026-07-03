@@ -6,6 +6,7 @@ import com.deliverytech.delivery.dto.response.LoginDTOResponse;
 import com.deliverytech.delivery.dto.response.UsuarioDTOResponse;
 import com.deliverytech.delivery.enums.Role;
 import com.deliverytech.delivery.exception.BusinessException;
+import com.deliverytech.delivery.metrics.DeliveryMetrics;
 import com.deliverytech.delivery.model.Usuario;
 import com.deliverytech.delivery.repository.UsuarioRepository;
 import com.deliverytech.delivery.security.JwtUtil;
@@ -18,11 +19,13 @@ public class AuthService {
     private final UsuarioRepository repository;
     private final PasswordEncoder encoder;
     private final JwtUtil jwtUtil;
+    private final DeliveryMetrics metrics;
 
-    public AuthService(UsuarioRepository repository, PasswordEncoder encoder, JwtUtil jwtUtil) {
+    public AuthService(UsuarioRepository repository, PasswordEncoder encoder, JwtUtil jwtUtil, DeliveryMetrics metrics) {
         this.repository = repository;
         this.encoder = encoder;
         this.jwtUtil = jwtUtil;
+        this.metrics = metrics;
     }
 
     public LoginDTOResponse  cadastrar(RegisterRequestDTO dto){
@@ -46,6 +49,7 @@ public class AuthService {
         if(!encoder.matches(dto.getSenha(), usuario.getSenha())){
             throw new BusinessException("Credenciais inválidas.");
         }
+        metrics.decrementarUsuariosAtivos();
         return construirReposta(usuario);
     }
 
