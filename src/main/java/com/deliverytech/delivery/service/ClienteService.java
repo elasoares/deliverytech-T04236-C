@@ -5,9 +5,11 @@ import com.deliverytech.delivery.dto.request.ClienteDTOAtualizar;
 import com.deliverytech.delivery.dto.response.ClienteDTOResponse;
 import com.deliverytech.delivery.exception.BusinessException;
 import com.deliverytech.delivery.exception.EntityNotFoundException;
+import com.deliverytech.delivery.metrics.DeliveryMetrics;
 import com.deliverytech.delivery.model.Cliente;
 import com.deliverytech.delivery.model.Usuario;
 import com.deliverytech.delivery.repository.ClienteRepository;
+import io.micrometer.core.instrument.Timer;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -21,35 +23,46 @@ public class ClienteService {
 
     private final ClienteRepository repository;
     private final ModelMapper mapper;
+    private final DeliveryMetrics metrics;
 
-    public ClienteService(ClienteRepository clienteRepository, ModelMapper mapper){
+
+    public ClienteService(ClienteRepository clienteRepository, ModelMapper mapper, DeliveryMetrics metrics){
         this.repository = clienteRepository;
         this.mapper = mapper;
+        this.metrics = metrics;
+
     }
 
     @Transactional
     public ClienteDTOResponse cadastrarCliente(ClienteDTO dto, Usuario usuarioLogado){
-        if(usuarioLogado == null){
-            throw new BusinessException("Usuário não autenticado.");
+        Timer.Sample timer = metrics.iniciarTimer();
+        try{
+            if (usuarioLogado == null) {
+                throw new BusinessException("Usuário não autenticado.");
+            }
+
+            if (!usuarioLogado.getRole().name().equals("CLIENTE")
+                    && !usuarioLogado.getRole().name().equals("ADMIN")) {
+                throw new BusinessException("Apenas CLIENTE ou ADMIN podem criar perfil de cliente.");
+            }
+
+            if (repository.existsByUsuario_Id(usuarioLogado.getId())) {
+                throw new BusinessException("Cliente já cadastrado para esse usuário.");
+            }
+
+            Cliente novoCliente = mapper.map(dto, Cliente.class);
+            novoCliente.setUsuario(usuarioLogado);
+            novoCliente.setAtivo(true);
+
+            Cliente salvo = repository.save(novoCliente);
+
+            metrics.incrementarClientesCadastrados();
+            metrics.finalizarTimer(timer, "cadastrar_cliente", "sucesso");
+            return mapper.map(salvo, ClienteDTOResponse.class);
+        }catch (Exception e){
+            metrics.finalizarTimer(timer, "cadastrar_cliente", "erro");
+            throw e;
         }
-
-        if(!usuarioLogado.getRole().name().equals("CLIENTE")
-                && !usuarioLogado.getRole().name().equals("ADMIN")){
-            throw new BusinessException("Apenas CLIENTE ou ADMIN podem criar perfil de cliente.");
-        }
-
-        if(repository.existsByUsuario_Id(usuarioLogado.getId())){
-            throw new BusinessException("Cliente já cadastrado para esse usuário.");
-        }
-
-        Cliente novoCliente = mapper.map(dto, Cliente.class);
-        novoCliente.setUsuario(usuarioLogado);
-        novoCliente.setAtivo(true);
-
-        Cliente salvo = repository.save(novoCliente);
-
-        return mapper.map(salvo, ClienteDTOResponse.class);
-
     }
 
     public ClienteDTOResponse buscarPorId(Long id){
@@ -62,31 +75,49 @@ public class ClienteService {
 
     @Transactional
     public ClienteDTOResponse atualizarCliente(Usuario usuarioLogado, ClienteDTOAtualizar dto){
-        Cliente cliente = repository.findByUsuario_Id(usuarioLogado.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
+        Timer.Sample timer = metrics.iniciarTimer();
+        try{
+            Cliente cliente = repository.findByUsuario_Id(usuarioLogado.getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
 
-        Usuario usuario = cliente.getUsuario();
-        usuario.setNome(dto.getNome());
-        usuario.setEmail(dto.getEmail());
+            Usuario usuario = cliente.getUsuario();
+            usuario.setNome(dto.getNome());
+            usuario.setEmail(dto.getEmail());
 
-        cliente.setTelefone(dto.getTelefone());
-        cliente.setEndereco(dto.getEndereco());
+            cliente.setTelefone(dto.getTelefone());
+            cliente.setEndereco(dto.getEndereco());
 
-        Cliente salvo = repository.save(cliente);
+            Cliente salvo = repository.save(cliente);
 
-        return mapper.map(salvo, ClienteDTOResponse.class);
+            metrics.incrementarClientesAtualizados();
+            metrics.finalizarTimer(timer, "atualizar_clientes", "sucesso");
+
+            return mapper.map(salvo, ClienteDTOResponse.class);
+        }catch (Exception e){
+            metrics.finalizarTimer(timer, "atualizar_clientes", "erro");
+            throw e;
+        }
     }
 
     @Transactional
     public ClienteDTOResponse toggle(Long id){
-        Cliente cliente = repository.findById(id)
-                .orElseThrow(()-> new EntityNotFoundException("Cliente não encontrado."));
+        Timer.Sample timer = metrics.iniciarTimer();
 
-        cliente.setAtivo(!cliente.isAtivo());
+        try{
+            Cliente cliente = repository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
 
-        Cliente salvo = repository.save(cliente);
+            cliente.setAtivo(!cliente.isAtivo());
 
-        return mapper.map(salvo, ClienteDTOResponse.class);
+            Cliente salvo = repository.save(cliente);
+
+            metrics.incrementarClientesInativados();
+            metrics.finalizarTimer(timer, "inativar_cliente", "sucesso");
+            return mapper.map(salvo, ClienteDTOResponse.class);
+        }catch (Exception e){
+            metrics.finalizarTimer(timer, "inativar_cliente", "erro");
+            throw e;
+        }
     }
 
     public Page<ClienteDTOResponse> listarClientesAtivos(Pageable pageable){

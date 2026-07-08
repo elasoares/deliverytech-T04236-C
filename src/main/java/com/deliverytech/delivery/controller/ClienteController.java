@@ -5,6 +5,7 @@ import com.deliverytech.delivery.dto.request.ClienteDTOAtualizar;
 import com.deliverytech.delivery.dto.response.ClienteDTOResponse;
 import com.deliverytech.delivery.dto.response.PagedResponse;
 import com.deliverytech.delivery.model.Usuario;
+import com.deliverytech.delivery.service.AuditoriaService;
 import com.deliverytech.delivery.service.ClienteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,9 +32,11 @@ import java.util.concurrent.TimeUnit;
 public class ClienteController {
 
     private final ClienteService service;
+    private final AuditoriaService auditoria;
 
-    public ClienteController(ClienteService service) {
+    public ClienteController(ClienteService service, AuditoriaService auditoria) {
         this.service = service;
+        this.auditoria = auditoria;
     }
 
     @Operation(summary = "Cadastrar novo cliente.")
@@ -45,9 +48,18 @@ public class ClienteController {
     @PostMapping("/cadastrar")
     public ResponseEntity<ClienteDTOResponse> cadastrarCliente(
             @Valid @RequestBody ClienteDTO dto, @AuthenticationPrincipal Usuario logado) {
+
+        ClienteDTOResponse reponse = service.cadastrarCliente(dto, logado);
+
+        auditoria.registrar(
+                "CLIENTE_CADASTRADO",
+                    logado.getEmail(),
+                "cliente:" + reponse.getId(),
+                "Novo cliente cadastrado"
+        );
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(service.cadastrarCliente(dto, logado));
+                .body(reponse);
     }
 
     @Operation(summary = "Buscar cliente por Id.")
@@ -88,7 +100,16 @@ public class ClienteController {
     @PreAuthorize("hasRole('ADMIN') or (hasRole('CLIENTE'))")
     @PutMapping("/atualizar")
     public ResponseEntity<ClienteDTOResponse> atualizarCliente(@AuthenticationPrincipal Usuario usuarioLogado, @Valid @RequestBody ClienteDTOAtualizar dto) {
-        return ResponseEntity.ok(service.atualizarCliente(usuarioLogado, dto));
+
+        ClienteDTOResponse reponse = service.atualizarCliente(usuarioLogado, dto);
+
+        auditoria.registrar(
+                "CLIENTE_ATUALIZADO",
+                usuarioLogado.getEmail(),
+                "cliente:" + reponse.getId(),
+                "Dados do cliente atualizados"
+        );
+        return ResponseEntity.ok(reponse);
     }
 
     @Operation(summary = "Ativar ou desativar cliente.")

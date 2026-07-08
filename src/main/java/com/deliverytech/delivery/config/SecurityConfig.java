@@ -60,6 +60,11 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/api/restaurantes/**").hasAnyRole("ADMIN", "RESTAURANTE")
                     .requestMatchers(HttpMethod.PATCH, "/api/restaurantes/**").hasAnyRole("ADMIN", "RESTAURANTE")
 
+                    .requestMatchers(HttpMethod.GET, "/api/pedidos/meus").hasAnyRole("CLIENTE",  "ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/pedidos/**").hasAnyRole("CLIENTE", "ADMIN", "RESTAURANTE")
+                    .requestMatchers(HttpMethod.POST, "/api/pedidos/**").hasAnyRole("ADMIN", "CLIENTE")
+                    .requestMatchers(HttpMethod.PATCH, "/api/pedidos/**").hasAnyRole("ADMIN", "RESTAURANTE", "CLIENTE")
+
                     .anyRequest().authenticated()
             )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

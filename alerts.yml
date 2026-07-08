@@ -1,0 +1,34 @@
+groups:
+  - name: delivery-api-alertas
+    rules:
+
+      - alert: AplicacaoForaDoAr
+        expr: up{job="delivery-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Delivery API fora do ar"
+          description: "A aplicação não responde há mais de 1 minuto"
+
+      - alert: MemoriaAltaJVM
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 0.80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mémoria heap acima de 80%"
+          description: "JVM usando {{ $value |  humanizePercentage }} da heap"
+
+      - alert: CpuAltaAplicacao
+        expr: process_cpu_usage > 0.80
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU da aplicação acima de 80%"
+          description: "CPU em {{ $value |  humanizePercentage }}"
+
+
+
+

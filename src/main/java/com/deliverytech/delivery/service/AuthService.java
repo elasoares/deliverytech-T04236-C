@@ -49,7 +49,7 @@ public class AuthService {
         if(!encoder.matches(dto.getSenha(), usuario.getSenha())){
             throw new BusinessException("Credenciais inválidas.");
         }
-        metrics.decrementarUsuariosAtivos();
+        metrics.incrementarUsuariosAtivos();
         return construirReposta(usuario);
     }
 
