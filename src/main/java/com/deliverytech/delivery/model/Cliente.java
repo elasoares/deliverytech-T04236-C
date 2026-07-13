@@ -31,4 +31,5 @@ public class Cliente {
     public void prePersist(){
         this.dataCadastro = LocalDateTime.now();
     }
+
 }

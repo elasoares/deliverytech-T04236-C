@@ -6,9 +6,11 @@ import com.deliverytech.delivery.dto.response.ClienteDTOResponse;
 import com.deliverytech.delivery.enums.Role;
 import com.deliverytech.delivery.exception.BusinessException;
 import com.deliverytech.delivery.exception.EntityNotFoundException;
+import com.deliverytech.delivery.metrics.DeliveryMetrics;
 import com.deliverytech.delivery.model.Cliente;
 import com.deliverytech.delivery.model.Usuario;
 import com.deliverytech.delivery.repository.ClienteRepository;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,10 +27,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
-
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ClienteServiceI {
@@ -36,11 +36,14 @@ public class ClienteServiceI {
     @Mock
     private ClienteRepository repository;
 
-    @InjectMocks
-    private ClienteService service;
-
     @Mock
     private ModelMapper mapper;
+
+    @Mock
+    private DeliveryMetrics metrics;
+
+    @InjectMocks
+    private ClienteService service;
 
     private Usuario usuarioCliente;
     private Usuario usuarioAdmin;
@@ -49,7 +52,10 @@ public class ClienteServiceI {
     private ClienteDTOResponse clienteDTOResponse;
 
     @BeforeEach
-    void setUp(){
+    void setUp() {
+        Timer.Sample timerSample = mock(Timer.Sample.class);
+        lenient().when(metrics.iniciarTimer()).thenReturn(timerSample);
+
         usuarioCliente = new Usuario();
         usuarioCliente.setId(1L);
         usuarioCliente.setNome("João Pedro");
@@ -76,20 +82,21 @@ public class ClienteServiceI {
 
     @Test
     @DisplayName("Deve cadastrar cliente com sucesso")
-    void deveCadastrarClienteComSucesso(){
+    void deveCadastrarClienteComSucesso() {
         when(repository.existsByUsuario_Id(usuarioCliente.getId())).thenReturn(false);
         when(mapper.map(clienteDTO, Cliente.class)).thenReturn(cliente);
         when(repository.save(any(Cliente.class))).thenReturn(cliente);
         when(mapper.map(cliente, ClienteDTOResponse.class)).thenReturn(clienteDTOResponse);
 
         ClienteDTOResponse resultado = service.cadastrarCliente(clienteDTO, usuarioCliente);
+
         assertThat(resultado).isNotNull();
         verify(repository).save(any(Cliente.class));
     }
 
     @Test
     @DisplayName("Deve lançar exceção quando cliente já está cadastrado")
-    void deveLancarExcecaoQuandoClienteJaCadastrado(){
+    void deveLancarExcecaoQuandoClienteJaCadastrado() {
         when(repository.existsByUsuario_Id(usuarioCliente.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> service.cadastrarCliente(clienteDTO, usuarioCliente))
@@ -97,19 +104,17 @@ public class ClienteServiceI {
                 .hasMessageContaining("Cliente já cadastrado para esse usuário.");
     }
 
-
     @Test
-    @DisplayName("Deve lançar exceção quando usuário não estiver autenticado.")
-    void deveLancarExcecaoQuandousuarioNaoEstiverAutenticado(){
-           assertThatThrownBy(() -> service.cadastrarCliente(clienteDTO, null))
+    @DisplayName("Deve lançar exceção quando usuário não estiver autenticado")
+    void deveLancarExcecaoQuandousuarioNaoEstiverAutenticado() {
+        assertThatThrownBy(() -> service.cadastrarCliente(clienteDTO, null))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Usuário não autenticado.");
     }
 
-
     @Test
     @DisplayName("Deve atualizar dados do cliente com sucesso")
-    void deveAtualizarDadosDoClienteComSucesso(){
+    void deveAtualizarDadosDoClienteComSucesso() {
         ClienteDTOAtualizar dto = new ClienteDTOAtualizar();
         dto.setNome("Novo nome");
         dto.setEmail("novo@gmail.com");
@@ -121,24 +126,25 @@ public class ClienteServiceI {
         when(mapper.map(cliente, ClienteDTOResponse.class)).thenReturn(clienteDTOResponse);
 
         ClienteDTOResponse resultado = service.atualizarCliente(usuarioCliente, dto);
+
         assertThat(resultado).isNotNull();
         verify(repository).save(cliente);
     }
 
     @Test
-    void deveLancarExcecaoAoAtualizarClienteInexistente(){
+    @DisplayName("Deve lançar exceção ao atualizar cliente inexistente")
+    void deveLancarExcecaoAoAtualizarClienteInexistente() {
         when(repository.findByUsuario_Id(usuarioCliente.getId())).thenReturn(Optional.empty());
         ClienteDTOAtualizar dto = new ClienteDTOAtualizar();
 
-        assertThatThrownBy(()-> service.atualizarCliente(usuarioCliente, dto))
+        assertThatThrownBy(() -> service.atualizarCliente(usuarioCliente, dto))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Cliente não encontrado.");
-
     }
 
     @Test
     @DisplayName("Deve inativar cliente ativo")
-    void deveInativarClienteAtivo(){
+    void deveInativarClienteAtivo() {
         when(repository.findById(1L)).thenReturn(Optional.of(cliente));
         when(repository.save(any(Cliente.class))).thenReturn(cliente);
         when(mapper.map(cliente, ClienteDTOResponse.class)).thenReturn(clienteDTOResponse);
@@ -150,8 +156,8 @@ public class ClienteServiceI {
     }
 
     @Test
-    @DisplayName("Deve reativar cliente inativar")
-    void deveReativarClienteInativar(){
+    @DisplayName("Deve reativar cliente inativado")
+    void deveReativarClienteInativar() {
         cliente.setAtivo(false);
 
         when(repository.findById(1L)).thenReturn(Optional.of(cliente));
@@ -164,10 +170,9 @@ public class ClienteServiceI {
         verify(repository).save(cliente);
     }
 
-
     @Test
     @DisplayName("Deve lançar exceção ao inativar ID inexistente")
-    void deveLancarExcecaoAoInativarIdInexistente(){
+    void deveLancarExcecaoAoInativarIdInexistente() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.toggle(99L))
@@ -177,7 +182,7 @@ public class ClienteServiceI {
 
     @Test
     @DisplayName("Deve retornar páginas de clientes ativos")
-    void deveRetornarPaginasDeClientesAtivos(){
+    void deveRetornarPaginasDeClientesAtivos() {
         Page<Cliente> page = new PageImpl<>(List.of(cliente), PageRequest.of(0, 10), 1);
 
         when(repository.findByAtivoTrue(any())).thenReturn(page);
@@ -191,7 +196,7 @@ public class ClienteServiceI {
 
     @Test
     @DisplayName("Deve retornar cliente ao buscar por ID existente")
-    void deveRetornarClienteAoBuscarPorIdExistente(){
+    void deveRetornarClienteAoBuscarPorIdExistente() {
         when(repository.findById(1L)).thenReturn(Optional.of(cliente));
         when(mapper.map(cliente, ClienteDTOResponse.class)).thenReturn(clienteDTOResponse);
 
@@ -199,17 +204,15 @@ public class ClienteServiceI {
 
         assertThat(retorno).isNotNull();
         verify(repository).findById(1L);
-
     }
 
     @Test
     @DisplayName("Deve lançar exceção ao buscar cliente por ID inexistente")
-    void deveLancarExcecaoAoBuscarClientePorIdInexistente(){
+    void deveLancarExcecaoAoBuscarClientePorIdInexistente() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.buscarPorId(99L))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Cliente não encontrado.");
     }
-
 }

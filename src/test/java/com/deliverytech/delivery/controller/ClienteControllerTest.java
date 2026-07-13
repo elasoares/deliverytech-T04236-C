@@ -13,144 +13,88 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
-@SpringBootTest
-public class ClienteControllerTest {
+class ClienteControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private ClienteService clienteService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    private ClienteDTO clienteRequest;
     private ClienteDTOResponse clienteResponse;
+    private ClienteDTO clienteDTO;
 
     @BeforeEach
-    void setUp(){
+    void setUp() {
         clienteResponse = new ClienteDTOResponse();
 
-        clienteRequest = new ClienteDTO();
-        clienteRequest.setTelefone("(11)91234-1234");
-        clienteRequest.setEndereco("Rua Teste, 123");
+        clienteDTO = new ClienteDTO();
+        clienteDTO.setTelefone("(85)99999-9999");
+        clienteDTO.setEndereco("Rua Teste, 123");
     }
 
+
     @Test
+    @WithMockUsuario
     @DisplayName("Deve cadastrar cliente e retornar 201")
-    @WithMockUser(roles = "CLIENTE")
     void deveCadastrarClienteComSucesso() throws Exception {
         when(clienteService.cadastrarCliente(any(), any()))
                 .thenReturn(clienteResponse);
 
         mockMvc.perform(post("/api/clientes/cadastrar")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(clienteRequest)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(clienteDTO)))
                 .andExpect(status().isCreated());
-
     }
 
     @Test
-    @DisplayName("Deve retornar 400 ao cadastrar cliente com telefone inválido")
-    @WithMockUser(roles = "CLIENTE")
-    void deveRetornar400aoCadastrarComTelefoneInvalido() throws Exception{
+    @WithMockUsuario
+    @DisplayName("Deve retornar 400 ao cadastrar com telefone inválido")
+    void deveRetornar400AoCadastrarComTelefoneInvalido() throws Exception {
         ClienteDTO dtoInvalido = new ClienteDTO();
         dtoInvalido.setTelefone("");
         dtoInvalido.setEndereco("Rua Teste, 123");
 
         mockMvc.perform(post("/api/clientes/cadastrar")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dtoInvalido)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dtoInvalido)))
                 .andExpect(status().isBadRequest());
     }
 
-
     @Test
-    @DisplayName("Deve retornar 409 ao cadastrar cliente já existente para usuário")
-    @WithMockUser(roles = "CLIENTE")
-    void deveRetornar409aoCadastrarClienteDuplicado() throws Exception{
+    @WithMockUsuario
+    @DisplayName("Deve retornar 409 ao cadastrar cliente duplicado")
+    void deveRetornar409AoCadastrarClienteDuplicado() throws Exception {
         when(clienteService.cadastrarCliente(any(), any()))
                 .thenThrow(new BusinessException("Cliente já cadastrado para este usuário."));
 
         mockMvc.perform(post("/api/clientes/cadastrar")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(clienteRequest)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(clienteDTO)))
                 .andExpect(status().isConflict());
-
     }
 
-    @Test
-    @DisplayName("Deve listar clientes com paginação padrão")
-    @WithMockUser(roles = "ADMIN")
-    void deveListarClientesComPaginacaoPadrao() throws Exception{
-        var page = new PageImpl<>(List.of(clienteResponse));
-
-        when(clienteService.listarClientesAtivos(any())).thenReturn(page);
-
-        mockMvc.perform(get("/api/clientes/listar"))
-                .andExpect(status().isOk());
-    }
 
     @Test
-    @DisplayName("Deve listar clientes ativos e retornar 200")
-    @WithMockUser(roles = "ADMIN")
-    void deveListarClientesAtivosEretornar200() throws Exception{
-        var page = new PageImpl<>(List.of(clienteResponse), PageRequest.of(0,10), 1);
-
-        when(clienteService.listarClientesAtivos(any())).thenReturn(page);
-
-        mockMvc.perform(get("/api/clientes/listar")
-                        .param("page", "0")
-                        .param("size", "10"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
-
-    }
-
-    @Test
-    @DisplayName("Deve buscar clientes por ID e retornar 200")
-    @WithMockUser(roles = "ADMIN")
-    void deveBuscarClientePorIdERetornar200() throws Exception{
-       when(clienteService.buscarPorId(1L)).thenReturn(clienteResponse);
-
-       mockMvc.perform(get("/api/clientes/1"))
-               .andExpect(status().isOk())
-               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
-    }
-
-    @Test
-    @DisplayName("Deve Retornar 404 ao buscar clientes por ID inexistente")
-    @WithMockUser(roles = "ADMIN")
-    void deveRetornar404AoBuscarClientePorIdInexistente() throws Exception{
-        when(clienteService.buscarPorId(99L)).thenThrow(new EntityNotFoundException("Cliente não localizado."));
-
-        mockMvc.perform(get("/api/clientes/99"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("Deve atualizar cliente e retonar 200")
-    @WithMockUser(roles = "CLIENTE")
-    void deveAtualizarClienteComSucesso() throws Exception{
+    @WithMockUsuario
+    @DisplayName("Deve atualizar cliente e retornar 200")
+    void deveAtualizarClienteComSucesso() throws Exception {
         ClienteDTOAtualizar atualizarDTO = new ClienteDTOAtualizar();
         atualizarDTO.setNome("Teste");
         atualizarDTO.setEmail("teste@gmail.com");
@@ -161,15 +105,15 @@ public class ClienteControllerTest {
                 .thenReturn(clienteResponse);
 
         mockMvc.perform(put("/api/clientes/atualizar")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(atualizarDTO)))
-            .andExpect(status().isOk());
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(atualizarDTO)))
+                .andExpect(status().isOk());
     }
 
     @Test
+    @WithMockUsuario
     @DisplayName("Deve retornar 404 ao atualizar cliente inexistente")
-    @WithMockUser(roles = "CLIENTE")
-    void deveRetornar404AoAtualizarClienteInexistente() throws Exception{
+    void deveRetornar404AoAtualizarClienteInexistente() throws Exception {
         ClienteDTOAtualizar atualizarDTO = new ClienteDTOAtualizar();
         atualizarDTO.setNome("Teste");
         atualizarDTO.setEmail("teste@gmail.com");
@@ -187,23 +131,64 @@ public class ClienteControllerTest {
 
 
     @Test
-    @DisplayName("Deve inativar cliente e retornar 200")
-    @WithMockUser(roles = "CLIENTE")
-    void deveInativarCliente() throws Exception{
-        when(clienteService.buscarPorId(1L)).thenReturn(clienteResponse);
+    @WithMockUsuario(role = "ADMIN")
+    @DisplayName("Deve listar clientes ativos e retornar 200")
+    void deveListarClientesAtivos() throws Exception {
+        var page = new org.springframework.data.domain.PageImpl<>(
+                java.util.List.of(clienteResponse),
+                org.springframework.data.domain.PageRequest.of(0, 10),
+                1
+        );
 
-        mockMvc.perform(patch("/api/clientes/1/toggle"))
+        when(clienteService.listarClientesAtivos(any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/clientes/listar")
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk());
     }
 
 
     @Test
-    @DisplayName("Deve retonar 404 ao inativar cliente inexistente")
-    @WithMockUser(roles = "CLIENTE")
-    void deveRetornar404AoInativarClienteInexistente() throws Exception{
-        when(clienteService.buscarPorId(99L)).thenThrow( new EntityNotFoundException("Cliente não encontrado."));
+    @WithMockUsuario(role = "ADMIN")
+    @DisplayName("Deve buscar cliente por ID e retornar 200")
+    void deveBuscarClientePorId() throws Exception {
+        when(clienteService.buscarPorId(1L)).thenReturn(clienteResponse);
+
+        mockMvc.perform(get("/api/clientes/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUsuario(role = "ADMIN")
+    @DisplayName("Deve retornar 404 ao buscar cliente inexistente")
+    void deveRetornar404AoBuscarClienteInexistente() throws Exception {
+        when(clienteService.buscarPorId(99L))
+                .thenThrow(new EntityNotFoundException("Cliente não encontrado."));
+
+        mockMvc.perform(get("/api/clientes/99"))
+                .andExpect(status().isNotFound());
+    }
+
+
+    @Test
+    @WithMockUsuario(role = "ADMIN")
+    @DisplayName("Deve inativar cliente e retornar 200")
+    void deveInativarCliente() throws Exception {
+        when(clienteService.toggle(1L)).thenReturn(clienteResponse);
+
+        mockMvc.perform(patch("/api/clientes/1/toggle"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUsuario(role = "ADMIN")
+    @DisplayName("Deve retornar 404 ao inativar cliente inexistente")
+    void deveRetornar404AoInativarClienteInexistente() throws Exception {
+        when(clienteService.toggle(99L))
+                .thenThrow(new EntityNotFoundException("Cliente não encontrado."));
 
         mockMvc.perform(patch("/api/clientes/99/toggle"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound());
     }
 }

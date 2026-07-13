@@ -1,6 +1,8 @@
 package com.deliverytech.delivery.service;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,6 +46,7 @@ public class ProdutoService {
         return dto;
     }
 
+    @CacheEvict(value = "produtoPorRestaurante", allEntries = true )
     @Transactional
     public ProdutoDTOResponse cadastrar(
             Long restauranteId,
@@ -77,6 +80,7 @@ public class ProdutoService {
         return returnResponseDTO(produtoRepository.save(produto));
     }
 
+    @Cacheable(value = "produtoPorRestaurante",  key="#restauranteId")
     public Page<ProdutoDTOResponse> listarPorRestaurante(Long restauranteId, Pageable pageable) {
 
         if (!restauranteRepository.existsById(restauranteId)) {
@@ -95,6 +99,7 @@ public class ProdutoService {
         return returnResponseDTO(p);
     }
 
+    @CacheEvict(value = "produtoPorRestaurante", allEntries = true )
     @Transactional
     public ProdutoDTOResponse toggleDisponibilidade(Long produtoId, Usuario usuarioLogado) {
 

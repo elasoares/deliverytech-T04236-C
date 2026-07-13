@@ -9,6 +9,8 @@ import com.deliverytech.delivery.model.Restaurante;
 import com.deliverytech.delivery.model.Usuario;
 import com.deliverytech.delivery.repository.RestauranteRepository;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class RestauranteService {
         this.mapper = mapper;
     }
 
+    @CacheEvict(value = "restaurantes", allEntries = true )
     @Transactional
     public RestauranteDTOResponse cadastrar(RestauranteDTO dto, Usuario usuarioLogado) {
         if (usuarioLogado == null) {
@@ -51,6 +54,8 @@ public class RestauranteService {
         return mapper.map(salvo, RestauranteDTOResponse.class);
     }
 
+    @Cacheable("restaurantes")
+    @Transactional(readOnly = true)
     public Page<RestauranteDTOResponse> listarAtivos(Pageable pageable) {
         return repository.findByAtivoTrue(pageable)
                 .map(r -> mapper.map(r, RestauranteDTOResponse.class));
@@ -68,12 +73,15 @@ public class RestauranteService {
                 .map(r -> mapper.map(r, RestauranteDTOResponse.class));
     }
 
+    @Cacheable(value = "restaurante", key="#id")
+    @Transactional(readOnly = true)
     public RestauranteDTOResponse buscarPorId(Long id) {
         Restaurante r = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Restaurante não encontrado."));
         return mapper.map(r, RestauranteDTOResponse.class);
     }
 
+    @CacheEvict(value = {"restaurantes", "restaurante"}, allEntries = true )
     @Transactional
     public RestauranteDTOResponse toggle(Long id) {
         Restaurante restaurante = repository.findById(id)
